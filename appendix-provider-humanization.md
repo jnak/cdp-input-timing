@@ -48,15 +48,15 @@ This is the substantive defect, and everything else is minor beside it.
 | | humanize on | real hardware, idle | real hardware, heavy load | no lattice at all |
 |---|---|---|---|---|
 | gap p50 | 12.5 / 14.1ms | 16.9ms | 16.7ms | — |
-| **sub-frame gaps** | **23% / 25%** | **0.0%** | **0.0%** | — |
+| **gaps below half a frame** | **23% / 25%** | **0.0%** | **0.0%** | — |
 | gaps within 0.1 frames of a multiple | 30% / 22% | 94% | 31% | 20% |
 
 Lattice adherence of 22–30% is statistically indistinguishable from having no frame
 structure whatsoever — though on its own that is a weak charge, because a real hand on a
-heavily loaded page also drops to 30.8% (§1.1 of the specification). **The sub-frame rate
-is the one that does not overlap:** real hardware produces 0 sub-frame gaps in 1,539,
-under every load condition tested, because coalescing structurally forbids two events in
-one frame. This implementation produces them a quarter of the time.
+heavily loaded page also drops to 30.8% (§1.1 of the specification). **The half-frame floor is the one that does
+not overlap:** across 1,539 real gaps at every load level tested, none fell below half a
+frame period — the shortest was 8.60ms. This implementation goes below it a quarter of the
+time.
 
 A raw excerpt shows the shape:
 

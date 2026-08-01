@@ -98,6 +98,9 @@ Three consequences for any synthetic implementation:
 Lattice adherence is not robust to page load, and any check built on it alone will fail
 real users. Real mouse input, one machine, three load levels, 15 seconds each:
 
+Throughout this document **"sub-frame" means shorter than *half* a frame period**, not
+shorter than a frame. Gaps under a full frame are ordinary — 38.7% of real ones are.
+
 | main thread | gaps | one-frame adherence | all gaps | **sub-frame** | **long-then-short** | gap p50 |
 |---|---|---|---|---|---|---|
 | idle | 485 | 95.1% | 94.4% | **0.0%** | **0.0%** | 16.9ms |
