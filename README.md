@@ -31,9 +31,9 @@ All numbers below are our own measurements. Method and reproduction are in §7.
 
 ## 1. What a real pointer stream looks like
 
-**One event per frame.** The frame index increments by exactly one, and two events almost
-never land in the same frame — 1.4% of the time for real hardware, against 32% for
-injected input over a network.
+**One event per frame.** The frame index increments by exactly one, and two events never
+land in the same frame — 0 occurrences in 1,539 real gaps, including on a page whose main
+thread was blocked 70% of the time, against up to 32% for injected input over a network.
 
 Here is an unedited excerpt from a recorded human mouse movement — a `mousemove` listener
 on local hardware, 60Hz display, recording `performance.now()` and the client coordinates.
