@@ -385,7 +385,103 @@ client with its own fitted model can use it. A reasonable minimum: the frame-cou
 distribution, a displacement distribution conditioned on frame count, a turn-angle
 distribution conditioned on displacement, hover-before-press and press-hold durations.
 
-### 5.4 Timing contract (normative)
+### 5.4 Worked examples
+
+The same task three ways: move to a sign-in button at (640, 512) from (412, 588) and
+click it. Messages are shown in CDP wire form.
+
+**Today.** Every point is its own message, and every message's arrival time becomes the
+page's observed cadence:
+
+```jsonc
+--> {"id":1,"sessionId":"A1","method":"Input.dispatchMouseEvent",
+     "params":{"type":"mouseMoved","x":448,"y":573,"button":"none"}}
+--> {"id":2,...,"params":{"type":"mouseMoved","x":495,"y":556,"button":"none"}}
+// ... 40 more, each a separate round trip
+--> {"id":43,...,"params":{"type":"mousePressed","x":640,"y":512,"button":"left","clickCount":1}}
+--> {"id":44,...,"params":{"type":"mouseReleased","x":640,"y":512,"button":"left","clickCount":1}}
+```
+
+The client controls the *order* of these and nothing else. The 43rd and 44th messages are
+the press, and the hold duration is whatever the network puts between them — typically
+under a millisecond, because they are sent back to back.
+
+**Layer 1.** One message carries the whole path; the client still owns the trajectory:
+
+```jsonc
+--> {"id":1,"sessionId":"A1","method":"Input.dispatchTrajectory","params":{
+      "points":[
+        {"x":448,"y":573,"frames":1},
+        {"x":495,"y":556,"frames":1},
+        {"x":541,"y":541,"frames":1},
+        {"x":578,"y":530,"frames":1},
+        {"x":605,"y":523,"frames":1},
+        {"x":622,"y":518,"frames":1},
+        {"x":632,"y":515,"frames":1},
+        {"x":637,"y":513,"frames":2},   // slowing: small step, two frames
+        {"x":639,"y":512,"frames":1},
+        {"x":640,"y":512,"frames":2}
+      ],
+      "onLag":"skip"}}
+
+<-- {"id":1,"result":{
+      "emitted":10,"skipped":0,"framePeriodMs":16.667,
+      "gapsFrames":[1,1,1,1,1,1,1,2,1,2],"durationMs":200}}
+```
+
+Abridged — a real approach is 20–60 points. Note the response echoes what was actually
+emitted, so the client can verify the contract held rather than assume it.
+
+When the host falls behind, rule 4 shows up in the response as dropped points rather than
+a flushed backlog:
+
+```jsonc
+<-- {"id":1,"result":{
+      "emitted":8,"skipped":2,"framePeriodMs":16.667,
+      "gapsFrames":[1,1,2,1,1,3,1,1],"durationMs":200}}
+```
+
+Two points were skipped and the gaps absorbed them (a 2 and a 3 where 1s were requested).
+Total duration is unchanged. **This is the correct behaviour** — it is what the browser
+does to real input under load, and it keeps every gap on the lattice.
+
+Then the press, as its own call so the hold stays on the host:
+
+```jsonc
+--> {"id":2,"sessionId":"A1","method":"Input.pressPointer",
+     "params":{"button":"left","holdFrames":6}}
+<-- {"id":2,"result":{"holdMs":100}}
+```
+
+**Layer 2.** The client states the intent and supplies nothing else:
+
+```jsonc
+--> {"id":1,"sessionId":"A1","method":"Interaction.click","params":{
+      "target":{"selector":"#sign-in"},
+      "speed":"normal","noise":"normal","seed":91424}}
+
+<-- {"id":1,"result":{
+      "emitted":47,"skipped":1,
+      "gapsFrames":[1,1,1,2,1,1,1,1,3,1,...],
+      "targetResolvedAt":{"x":640,"y":512},
+      "durationMs":812}}
+```
+
+The client never computes a coordinate. `targetResolvedAt` reports where the element
+actually was when the pointer arrived, which is how the caller learns the page reflowed
+mid-approach instead of silently clicking the wrong thing.
+
+Typing is the same shape, and note that the per-keystroke timing is what moves on-host:
+
+```jsonc
+--> {"id":2,"sessionId":"A1","method":"Interaction.type","params":{
+      "target":{"selector":"#username"},
+      "text":"a.member@example.com",
+      "speed":"normal","seed":91425}}
+<-- {"id":2,"result":{"emitted":20,"durationMs":2840}}
+```
+
+### 5.5 Timing contract (normative)
 
 An implementation of either layer:
 
@@ -410,7 +506,7 @@ An implementation of either layer:
 8. **MUST NOT** apply motion the client did not request. If a provider adds interactions
    of its own, that must be opt-in and documented.
 
-### 5.5 Feedback
+### 5.6 Feedback
 
 Both layers return the **actual emitted gaps in frames** and the host's frame period.
 Without this, clients cannot distinguish "the provider dispatched correctly" from "the
