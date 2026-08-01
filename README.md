@@ -36,8 +36,9 @@ measured gaps — including on a page whose main thread was blocked 70% of the t
 shortest was **8.60ms**, and not one fell below half a frame period. Injected input over a
 network breaks that floor up to 32% of the time.
 
-(Gaps *shorter than a full frame* are common — 38.7% of real gaps — so the floor is at
-half a frame, not one frame. The distinction matters and §1.1 has the mechanism.)
+(The test is half a frame, not one. Comparing against the full nominal period counts
+ordinary one-frame gaps as violations, because the measured period carries a few tenths of
+a millisecond of slop. §1.1 has the detail.)
 
 Here is an unedited excerpt from a recorded human mouse movement — a `mousemove` listener
 on local hardware, 60Hz display, recording `performance.now()` and the client coordinates.
@@ -99,7 +100,9 @@ Lattice adherence is not robust to page load, and any check built on it alone wi
 real users. Real mouse input, one machine, three load levels, 15 seconds each:
 
 Throughout this document **"sub-frame" means shorter than *half* a frame period**, not
-shorter than a frame. Gaps under a full frame are ordinary — 38.7% of real ones are.
+shorter than a frame. The nominal period carries a few tenths of a millisecond of slop, so
+a strict "under one frame" test flags 23% of ordinary idle gaps against 0.8% that are
+genuinely short. Half a frame sits clear of that noise.
 
 | main thread | gaps | one-frame adherence | all gaps | **sub-frame** | **long-then-short** | gap p50 |
 |---|---|---|---|---|---|---|
