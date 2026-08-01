@@ -615,9 +615,10 @@ a conformance gate built on adherence would fail real users and could be passed 
 implementation that merely tested on a quiet page. Measure it, report it, and treat a low
 score as a prompt to check Group A rather than as a failure in itself.
 
-The half-frame floor is where the whole test lives. Real gaps shorter than a *full* frame
-are common (38.7%), so the check is not "one event per frame" — it is that nothing arrives
-in under half a period. That floor held at every load level we tested. Synthetic input
+The half-frame floor is where the whole test lives. The check is not "one event per frame": that holds on an idle page (0.8% of gaps fall
+meaningfully short) but breaks under load, where 34.1% land at 0.75 frames as the renderer
+drains its queue. The load-invariant statement is that nothing arrives in under half a
+period, which held at every level we tested. Synthetic input
 breaks it routinely: 23–25% for one provider's built-in humanisation, and 3–32% run to run
 for client-side pacing over a network.
 
