@@ -618,13 +618,16 @@ a conformance gate built on adherence would fail real users and could be passed 
 implementation that merely tested on a quiet page. Measure it, report it, and treat a low
 score as a prompt to check Group A rather than as a failure in itself.
 
-The half-frame floor is where the whole test lives. One event per frame is real — attributing events to frames directly via the
-`requestAnimationFrame` timeline gives **0 of 2,155 consecutive pairs sharing a frame** on a
-responsive page. But it is not the right threshold to test against, for two reasons: real
-frame intervals span 16.0–17.4ms, so a fixed-period comparison flags ordinary gaps as
-violations; and the property breaks under load, where 34.1% of gaps land at 0.75 frames as
-the renderer drains its queue on thread-free rather than on vsync. Half a period is clear of
-both problems, and held at every load level tested. Synthetic input
+The half-frame floor is where the whole test lives. One event per frame is real and holds at every load level — attributing events to frames
+directly via the `requestAnimationFrame` timeline gives **0 of ~2,400 consecutive pairs
+sharing a frame**, idle and with the main thread blocked 70% of the time.
+
+It is still the wrong threshold to test against, because a page cannot observe frames — only
+the time its own listener ran. A gap is `N x frame interval` minus whatever listener delay
+was shed between the two events, so real gaps dip below one frame routinely under load (147
+of 728 at 30ms blocking, every one of them crossing exactly one frame boundary). Half a
+period is far enough below that: real input crossed it once in 1,789 gaps, machine input
+crosses it 23–32% of the time. Synthetic input
 breaks it routinely: 23–25% for one provider's built-in humanisation, and 3–32% run to run
 for client-side pacing over a network.
 
