@@ -295,6 +295,9 @@ trajectory shape under client control.
   model to every client makes that model a shared fingerprint. We disabled one provider's
   humanisation feature after measuring it inject ~720 pointer events we did not request,
   which made our own behaviour unmeasurable and identical to every other customer's.
+  [Appendix: measuring a provider's built-in humanisation](appendix-provider-humanization.md)
+  measures one such implementation in detail — it already synthesises provider-side and
+  varies between runs, and misses conformance mainly on the frame lock.
 - **Two layers**, because they have different adoption costs. The low layer is a small,
   mechanical change that fixes the timing problem. The high layer is more work and more
   valuable.
