@@ -45,11 +45,11 @@ It also gets the event *budget* about right. 229ms is 13.7 frames at 60Hz and it
 
 This is the substantive defect, and everything else is minor beside it.
 
-| | humanize on | real hardware | no lattice at all |
-|---|---|---|---|
-| gap p50 | 12.5 / 14.1ms | 16.7ms | — |
-| sub-frame gaps | **23% / 25%** | 1.4% | — |
-| gaps within 0.1 frames of a multiple | **30% / 22%** | 92% | 20% |
+| | humanize on | real hardware, idle | real hardware, heavy load | no lattice at all |
+|---|---|---|---|---|
+| gap p50 | 12.5 / 14.1ms | 16.9ms | 16.7ms | — |
+| **sub-frame gaps** | **23% / 25%** | **0.0%** | **0.0%** | — |
+| gaps within 0.1 frames of a multiple | 30% / 22% | 94% | 31% | 20% |
 
 Lattice adherence of 22–30% is statistically indistinguishable from having no frame
 structure whatsoever — though on its own that is a weak charge, because a real hand on a
@@ -124,8 +124,9 @@ So the honest position is that the pointer channel is **unmeasured**, not unimpo
 The implementation is one property short of conforming, not a rewrite:
 
 1. **Lock the dispatch loop to the compositor clock** (§5.5 rule 3). The event budget is
-   already right; the timing is not. This single change would move adherence from ~25% to
-   near the 92% real hardware produces.
+   already right; the timing is not. The measure that matters is the sub-frame rate — real
+   input never puts two events in one frame at any load level, and this puts a quarter of
+   them there. Frame-quantised dispatch takes that to zero by construction.
 2. **Hold the press** (rule 7). A drawn duration around a 106ms median.
 3. **Slow the default** to something near 366px/s, which follows from (1) anyway once gaps
    are frame-quantised.
