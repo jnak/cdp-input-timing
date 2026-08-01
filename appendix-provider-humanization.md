@@ -52,7 +52,13 @@ This is the substantive defect, and everything else is minor beside it.
 | gaps within 0.1 frames of a multiple | **30% / 22%** | 92% | 20% |
 
 Lattice adherence of 22–30% is statistically indistinguishable from having no frame
-structure whatsoever. A raw excerpt shows the shape:
+structure whatsoever — though on its own that is a weak charge, because a real hand on a
+heavily loaded page also drops to 30.8% (§1.1 of the specification). **The sub-frame rate
+is the one that does not overlap:** real hardware produces 0 sub-frame gaps in 1,539,
+under every load condition tested, because coalescing structurally forbids two events in
+one frame. This implementation produces them a quarter of the time.
+
+A raw excerpt shows the shape:
 
 ```
   t=1456.8  x=160  y=180

@@ -74,8 +74,9 @@ multiple. Uniformly distributed gaps would give 0.25 and 20%.
 Three consequences for any synthetic implementation:
 
 - **p10 equals p50** (16.6 vs 16.7). A coalesced pipeline has a *floor*, not a
-  distribution. Sub-frame gaps are rare but not absent: **1.4% of real gaps**, so 1.4% is
-  the number to match, not zero.
+  distribution, and sub-frame gaps are essentially absent — **0 in 1,539** on a direct
+  listener measurement (§1.1). An earlier capture through instrumented harness code showed
+  1.4%, which we now attribute to that capture path rather than to the input.
 - **Gaps longer than one frame happen (17.6%) and mostly are not dropped frames.**
   Displacement does not scale with the gap — three-frame gaps carry *half* the
   displacement of one-frame gaps (4.2px vs 8.1px) — because the gap comes from the
@@ -87,6 +88,34 @@ Three consequences for any synthetic implementation:
   input is flat-to-negative.
 - **The gap series is mildly positively autocorrelated** (lag-1 **+0.094**), because a
   hand's speed varies smoothly while its cadence does not.
+
+### 1.1 What main-thread load does to it — and what it cannot do
+
+Lattice adherence is not robust to page load, and any check built on it alone will fail
+real users. Real mouse input, one machine, three load levels, 15 seconds each:
+
+| main thread | gaps | one-frame adherence | all gaps | **sub-frame** | **long-then-short** | gap p50 |
+|---|---|---|---|---|---|---|
+| idle | 485 | 95.1% | 94.4% | **0.0%** | **0.0%** | 16.9ms |
+| blocked 30ms/100ms | 629 | 73.6% | 72.3% | **0.0%** | **0.0%** | 16.9ms |
+| blocked 70ms/100ms | 425 | **46.9%** | **30.8%** | **0.0%** | **0.0%** | 16.7ms |
+
+A hand on a heavily loaded page scores 30.8%, which is inside the range synthetic input
+produces. Adherence therefore separates cleanly only on an idle page.
+
+**Two properties survive any amount of load, and they are the ones worth checking:**
+
+- **Sub-frame gaps stay at exactly zero** — 0 in 1,539 gaps across all three conditions.
+  Coalescing structurally permits at most one event per frame, and a busy thread cannot
+  break that; it can only remove events.
+- **Compensating pairs stay at exactly zero.** A busy thread delays and merges. It never
+  holds a backlog and releases it, which is precisely what a network does.
+
+Load also leaves a distinctive shape rather than noise. Under 70ms blocks the frame counts
+are `1f:273  2f:2  4f:125  5f:22` — bimodal, either consecutive frames or a four-frame jump
+matching the duty cycle, with almost nothing in between. Every one of those gaps is a whole
+number of frames. And the modal gap stays at the frame period throughout: load removes
+events, it never accelerates them.
 
 ## 2. What CDP-over-network produces
 
@@ -538,25 +567,40 @@ listener recording `performance.now()`, `clientX`, `clientY`. Request a 900px st
 trajectory of 300 samples at one frame per sample. Repeat four times. Compute inter-event
 gaps and displacements.
 
-**Thresholds**, derived from the real-hardware baseline in §1:
+**Thresholds** fall into two groups, and the distinction matters more than any individual
+number.
+
+**Group A — load-invariant. These are the real checks.** Measured on real hardware they
+hold at the same value whether the page is idle or its main thread is blocked 70% of the
+time (§1.1), so an implementation has no excuse and no defence.
 
 | metric | real hardware | pass |
 |---|---|---|
-| **one-frame gaps** within 0.1 frames of the period | **98%** | ≥ 95% |
-| all gaps within 0.1 frames of an integer multiple | 92% | ≥ 88% |
-| sub-frame gaps | 1.4% | ≤ 3% |
-| long-gap-then-short-gap pairs | 0.3% | ≤ 1% |
-| gap lag-1 autocorrelation | +0.094 | ≥ −0.05 |
+| **sub-frame gaps** | **0.0%** (0 of 1,539) | **≤ 2%** |
+| **long-gap-then-short-gap pairs** | **0.0%** | **≤ 1%** |
+| **modal gap** | one frame period, at every load level | within 5% of the frame period |
 | order inversions | 0 | 0 |
+| gap lag-1 autocorrelation | +0.094 | ≥ −0.05 |
 | displacement correlation with frame count | flat/negative | not positive |
 
-The one-frame row is the primary check and the pooled row is secondary, because adherence
-is not uniform across gap lengths. Real consecutive-frame gaps are 98% adherent with a
-mean error of 0.17ms — about the resolution limit of a timestamp taken inside a listener.
-Longer gaps are looser (69% at two frames, 50% at four), and the absolute error grows with
-the gap, consistent with frame duration not being perfectly uniform under load. Those
-buckets are also small in the baseline (n=6 to 55), so treat the pooled 92% as the weaker
-of the two figures and the 98% as the one an implementation should be held to.
+**Group B — informative on an idle page only. Do not use these as a gate.**
+
+| metric | idle | 30ms blocks | 70ms blocks |
+|---|---|---|---|
+| one-frame gaps within 0.1 frames | 95.1% | 73.6% | 46.9% |
+| all gaps within 0.1 frames | 94.4% | 72.3% | 30.8% |
+
+Lattice adherence is the most intuitive measure and the least robust one. A real hand on a
+heavily loaded page reaches 30.8%, which is inside the range synthetic input produces — so
+a conformance gate built on adherence would fail real users and could be passed by an
+implementation that merely tested on a quiet page. Measure it, report it, and treat a low
+score as a prompt to check Group A rather than as a failure in itself.
+
+The sub-frame threshold is where the whole test lives. Coalescing permits at most one
+`mousemove` per compositor frame, and no amount of main-thread contention breaks that — a
+busy thread removes events, it cannot manufacture two inside one frame. Synthetic input
+does so routinely: 23–25% for one provider's built-in humanisation, and 3–32% run to run
+for client-side pacing over a network.
 
 The autocorrelation threshold catches a subtle and common implementation bug. Pacing with
 `setTimeout(fn, 16)` against a 16.67ms frame period alternates 16/17ms and aliases against
