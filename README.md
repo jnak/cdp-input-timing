@@ -78,8 +78,10 @@ Three consequences for any synthetic implementation:
   the number to match, not zero.
 - **Gaps longer than one frame happen (17.6%) and mostly are not dropped frames.**
   Displacement does not scale with the gap — three-frame gaps carry *half* the
-  displacement of one-frame gaps (4.2px vs 8.1px) — because the pointer was moving too
-  slowly to cross a pixel boundary each frame, so there was nothing to report. An
+  displacement of one-frame gaps (4.2px vs 8.1px) — because the gap comes from the
+  *device* reporting nothing that frame. A mouse sensor emits discrete counts; a frame
+  with no counts produces no event. (A count smaller than one CSS pixel still produces an
+  event, which is why the excerpt above has two at identical coordinates.) An
   implementation that manufactures multi-frame gaps by *dropping* samples gets this
   backwards: random loss makes gap and displacement positively correlated, where real
   input is flat-to-negative.
@@ -324,6 +326,14 @@ frames against its actual compositor period.
 Coordinates are absolute rather than deltas: the provider already knows the current pointer
 position, and absolute coordinates avoid accumulating rounding error along a long path.
 
+`frames` is the gap *before* each point, and values above 1 carry an obligation the client
+must meet, because this layer puts the client in charge of the joint distribution. A gap
+longer than one frame means the device reported nothing during those frames, which happens
+when the pointer is barely moving — so `frames: 3` must be paired with a *small* step, not
+a large one. Real three-frame gaps carry 4.2px against 8.1px for one frame (§1). Fast
+motion reports every frame; a long gap followed by a large jump is a combination real input
+never produces. A provider MAY reject or flag trajectories that invert this relationship.
+
 The press is a **separate call**, not an index into the trajectory, because the two have
 very different timing requirements. A press must follow a hover, and real hover-before-press
 is a median 468ms with a wide spread — a network round-trip inside that window is invisible.
@@ -358,9 +368,9 @@ Interaction.drag   { from, to,        speed?, noise?, profile?, seed? }
 **`speed`** scales displacement per frame — how fast the pointer covers ground. For
 calibration, real motion measured a median of roughly 366px/s, with slow phases around
 85px/s. Speed is not independent of the frame-count distribution: slower motion produces
-*more* multi-frame gaps, because a pointer that doesn't cross a pixel boundary in a given
-frame generates no event (§1). An implementation that changes step size without changing
-the gap distribution will get the joint structure wrong.
+*more* multi-frame gaps, because a slow-moving device reports no counts in some frames and
+those frames produce no event (§1). An implementation that changes step size without
+changing the gap distribution will get the joint structure wrong.
 
 **`noise`** controls departure from a direct path — turn-angle magnitude, overshoot and
 reversal rate, and micro-motion while hovering. At `normal` this should land near the
