@@ -31,14 +31,16 @@ All numbers below are our own measurements. Method and reproduction are in §7.
 
 ## 1. What a real pointer stream looks like
 
-**Real pointer input has a hard floor on how close two events can be.** Across 1,539
-measured gaps — including on a page whose main thread was blocked 70% of the time — the
-shortest was **8.60ms**, and not one fell below half a frame period. Injected input over a
-network breaks that floor up to 32% of the time.
+**Real pointer input has a hard ceiling on how many events it can deliver: one per
+compositor frame.** Across 1,792 measured events — idle, and on a page whose main thread was
+blocked 70% of the time — no window of *n* consecutive events ever spanned fewer than *n−1*
+frame boundaries. Injected input over a network breaks that ceiling routinely, and one
+provider's built-in humanisation packs 14 events into 7 frames.
 
-(The test is half a frame, not one. Comparing against the full nominal period counts
-ordinary one-frame gaps as violations, because the measured period carries a few tenths of
-a millisecond of slop. §1.1 has the detail.)
+Counting events against frames is the primary test because it needs no threshold at all.
+Where the frame timeline is unavailable, the fallback is gap length — measured against
+*half* a frame rather than one, since real frame intervals span 16.0–17.4ms and a strict
+one-frame test flags ordinary gaps as violations. §1.1 defines both.
 
 Here is an unedited excerpt from a recorded human mouse movement — a `mousemove` listener
 on local hardware, 60Hz display, recording `performance.now()` and the client coordinates.
@@ -78,10 +80,10 @@ multiple. Uniformly distributed gaps would give 0.25 and 20%.
 
 Three consequences for any synthetic implementation:
 
-- **There is a floor.** On an idle page p10 equals p50 (16.6 vs 16.7); across every load
-  condition the shortest gap observed was 8.60ms, or 0.51 frames, with **0 of 1,539** below
-  half a frame. An earlier capture through instrumented harness code showed 1.4% below that
-  line, which we now attribute to the capture path rather than to the input.
+- **There is a floor.** On an idle page p10 equals p50 (16.6 vs 16.7). Across every load
+  condition, exactly **one gap in 1,789** fell below half a frame period: a 1.70ms interval
+  produced by a listener that ran 15.2ms late. A frame boundary falls inside it, so even
+  that case is two adjacent frames rather than two events in one.
 - **Gaps longer than one frame happen (17.6%) and mostly are not dropped frames.**
   Displacement does not scale with the gap — three-frame gaps carry *half* the
   displacement of one-frame gaps (4.2px vs 8.1px) — because the gap comes from the
@@ -100,9 +102,10 @@ Lattice adherence is not robust to page load, and any check built on it alone wi
 real users. Real mouse input, one machine, three load levels, 15 seconds each:
 
 Throughout this document **"sub-frame" means shorter than *half* a frame period**, not
-shorter than a frame. The nominal period carries a few tenths of a millisecond of slop, so
-a strict "under one frame" test flags 23% of ordinary idle gaps against 0.8% that are
-genuinely short. Half a frame sits clear of that noise.
+shorter than a frame. Real frame intervals span 16.0–17.4ms, so a strict "under one frame"
+test against a nominal period flags 23% of perfectly ordinary idle gaps. Half a frame sits
+clear of that noise, and the count of events against frames (§1.1) avoids the question
+entirely.
 
 | main thread | gaps | one-frame adherence | all gaps | **sub-frame** | **long-then-short** | gap p50 |
 |---|---|---|---|---|---|---|
@@ -132,8 +135,8 @@ is no longer running on.
 
 **Two properties survive it anyway, and they are the ones worth checking:**
 
-- **The floor holds.** Not one gap in 1,539 fell below half a frame period, at any load
-  level; the shortest was 8.60ms. A busy thread removes events and shifts the clock — it
+- **The floor holds.** One gap in 1,789 fell below half a frame period, at any load
+  level, and it was an adjacent-frame pair. A busy thread removes events and shifts the clock — it
   cannot deliver two events in quick succession, because there is nothing to deliver until
   the device reports again.
 - **Compensating pairs stay at exactly zero.** A busy thread delays and merges. It never

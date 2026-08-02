@@ -76,9 +76,9 @@ The same defect seen through gap statistics rather than counts.
 Lattice adherence of 22–30% is statistically indistinguishable from having no frame
 structure whatsoever — though on its own that is a weak charge, because a real hand on a
 heavily loaded page also drops to 30.8% (§1.1 of the specification). **The half-frame floor is the one that does
-not overlap:** across 1,539 real gaps at every load level tested, none fell below half a
-frame period — the shortest was 8.60ms. This implementation goes below it a quarter of the
-time.
+not overlap:** across 1,789 real gaps at every load level tested, exactly one fell below
+half a frame period, and a frame boundary falls inside even that one. This implementation
+goes below it a quarter of the time.
 
 A raw excerpt shows the shape:
 
