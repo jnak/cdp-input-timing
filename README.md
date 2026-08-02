@@ -598,7 +598,8 @@ time (§1.1), so an implementation has no excuse and no defence.
 
 | metric | real hardware | pass |
 |---|---|---|
-| **gaps below half a frame period** | **0.0%** (0 of 1,539; floor 8.60ms) | **≤ 2%** |
+| **events in excess of frames** (any window of *n* events spanning fewer than *n−1* rAF ticks) | **0** in 1,792 events | **0** |
+| **gaps below half a frame period** | 1 in 1,789 (0.06%) | **≤ 2%** |
 | **long-gap-then-short-gap pairs** | **0.0%** | **≤ 1%** |
 | **modal gap** | one frame period, at every load level | within 5% of the frame period |
 | order inversions | 0 | 0 |
@@ -618,7 +619,12 @@ a conformance gate built on adherence would fail real users and could be passed 
 implementation that merely tested on a quiet page. Measure it, report it, and treat a low
 score as a prompt to check Group A rather than as a failure in itself.
 
-The half-frame floor is where the whole test lives. One event per frame is real and holds at every load level. The test that establishes it
+The excess-events row is the strongest check and the easiest to pass or fail
+unambiguously: it needs no threshold, no nominal refresh rate, and no assumption about where
+inside a frame an event fired. One measured implementation fails it by a wide margin —
+14 events inside 7 frames, three runs out of three (see the appendix).
+
+The half-frame floor is the distributional backstop. One event per frame is real and holds at every load level. The test that establishes it
 without assuming where inside a frame an event fired: *n* consecutive events require *n*
 distinct frames, so the span from the first to the last must contain at least *n−1*
 `requestAnimationFrame` ticks. Across 1,792 events, every window size from 2 to 40, idle and

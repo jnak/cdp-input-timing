@@ -41,9 +41,31 @@ It also gets the event *budget* about right. 229ms is 13.7 frames at 60Hz and it
 
 ## What it gets wrong
 
+### It emits more events than the display can deliver
+
+This is the substantive defect, and it is categorical rather than a matter of degree.
+
+*n* consecutive events require *n* distinct frames, so their span must contain at least
+*n−1* frame boundaries. Measured against the frame timeline **on the provider's own host**
+(16.70ms, 59.9Hz — the same as the reference hardware), across three runs:
+
+| | events | frame boundaries in span | needs | surplus |
+|---|---|---|---|---|
+| rep 1 | 14 | 7 | 13 | **+6** |
+| rep 2 | 12 | 7 | 11 | **+4** |
+| rep 3 | 14 | 9 | 13 | **+4** |
+
+**Fourteen events inside seven frames** — twice what the pipeline can carry. Real input
+never exceeds one event per frame: verified over 1,792 events on real hardware, idle and
+with the main thread blocked 70% of the time, zero violations at any window size.
+
+This does not depend on a nominal refresh rate, on where inside a frame an event fired, or
+on any distributional threshold. A page that receives two pointer events in one frame is
+receiving something no pointing device produced.
+
 ### It is not locked to the compositor clock
 
-This is the substantive defect, and everything else is minor beside it.
+The same defect seen through gap statistics rather than counts.
 
 | | humanize on | real hardware, idle | real hardware, heavy load | no lattice at all |
 |---|---|---|---|---|
