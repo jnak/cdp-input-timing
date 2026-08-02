@@ -15,11 +15,12 @@ The failure is not that the network is slow. It is that:
 1. **CDP-injected pointer events are not frame-coalesced**, so every transport artifact
    reaches the page's listener directly. Real hardware input is coalesced to at most one
    event per compositor frame before any listener sees it.
-2. **Arrival jitter is extremely heavy-tailed** — median 0.7ms, p99 63ms, max 1,280ms in
-   our measurements — so a small fraction of events arrive wildly out of schedule.
-3. **Every stall is followed by a burst.** The delayed events are released together,
-   producing sub-millisecond inter-event gaps. In our sample this happened on 4 of 4
-   stalls.
+2. **Arrival jitter is extremely heavy-tailed** — median 0.7ms, p99 63ms, max 1,280ms — so
+   a small fraction of events arrive wildly out of schedule. Latency alone would be
+   harmless; it is the spread that matters.
+3. **Every stall is followed by a burst**, on 4 of 4 stalls in our sample. The backlog is
+   released together, so a 300-point trajectory delivers up to **17 events more than the
+   frames in their span could carry** — a stream no pointing device can produce.
 
 The fix has to run on the same machine as the browser. This document proposes a two-layer
 API for that, plus a conformance test so implementations can be verified rather than
@@ -199,29 +200,38 @@ processed in send order.
 This is worth stating because it bounds the problem: the channel damages **timing and
 completeness**, never sequence. Path geometry arrives intact. Only the clock is corrupted.
 
-### 2.3 The jitter distribution is heavy-tailed, not Gaussian
+### 2.3 Jitter delivers more events than the display can carry
 
-1,010 gaps across four runs against a hosted provider at 16ms send spacing. "Excess
-delay" is the gap minus the sends it actually spanned, so lost events are factored out
-and what remains is pure lateness.
+Latency by itself is harmless. A stream delayed by a uniform 500ms still arrives one event
+per frame and looks exactly like a hand. What a page can detect is **differential** delay:
+events bunched into fewer frames than there are events.
+
+Measured with the pigeonhole count of §1 — surplus is the number of events beyond what the
+frames in their span could have delivered — driving the same 300-point trajectory at
+one-frame pacing:
+
+| | max surplus events | windows that are impossible |
+|---|---|---|
+| real hardware | **0** | 0 |
+| local browser, same machine | 0 and 1 across two runs | 0 and 100 |
+| **hosted browser over a network** | **17, 3, 2 across three runs** | **1048, 212, 145** |
+
+Seventeen events beyond what the display could deliver, from a 300-event trajectory, on a
+host whose frame clock measures the same 16.70ms as the reference hardware. This is the
+concrete harm, and it is not a threshold or a distributional judgement — those events could
+not have come from a pointing device.
+
+The cause is the shape of the delay distribution. Over 1,010 gaps, excess delay — the gap
+minus the sends it actually spanned, so losses are factored out and only lateness remains:
 
 | p50 | p90 | p99 | p99.9 | max |
 |---|---|---|---|---|
 | 0.7ms | 2.7ms | 63ms | 111ms | **1,280ms** |
 
-Mean 1.3ms, standard deviation **49.6ms** — 37× the mean. The p99.9/p50 ratio is **989**;
-a Gaussian gives about 4.
-
-| excess delay | share |
-|---|---|
-| under half a frame | 83.4% |
-| half to one frame | 6.2% |
-| 1–3 frames | 8.0% |
-| 3–12 frames | 2.2% |
-| over 200ms | 0.2% |
-
-**"Average jitter" is not a usable summary of this distribution.** The median is
-excellent. The tail decides everything.
+Mean 1.3ms, standard deviation **49.6ms** — 37× the mean. The p99.9/p50 ratio is **989**
+where a Gaussian gives about 4. **"Average jitter" is not a usable summary of this.** The
+median is excellent and the tail decides everything, because it is the tail that compresses
+a backlog into a single frame.
 
 ### 2.4 Every stall is followed by a burst
 
