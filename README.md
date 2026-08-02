@@ -618,10 +618,12 @@ a conformance gate built on adherence would fail real users and could be passed 
 implementation that merely tested on a quiet page. Measure it, report it, and treat a low
 score as a prompt to check Group A rather than as a failure in itself.
 
-The half-frame floor is where the whole test lives. One event per frame is real and holds at every load level. Record the
-`requestAnimationFrame` timeline alongside the events and bucket each event into its frame:
-across 1,792 events spanning 2,353 frames — idle, and with the main thread blocked 70% of
-the time — **no frame ever contained more than one event.**
+The half-frame floor is where the whole test lives. One event per frame is real and holds at every load level. The test that establishes it
+without assuming where inside a frame an event fired: *n* consecutive events require *n*
+distinct frames, so the span from the first to the last must contain at least *n−1*
+`requestAnimationFrame` ticks. Across 1,792 events, every window size from 2 to 40, idle and
+with the main thread blocked 70% of the time, **no window ever came up short.** Injecting one
+extra event into the same data makes the test fire, so the negative is meaningful.
 
 It is still the wrong threshold to test against, because a page cannot observe frames — only
 the time its own listener ran. A gap is `N x frame interval` minus whatever listener delay
