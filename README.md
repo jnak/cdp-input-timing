@@ -80,10 +80,10 @@ multiple. Uniformly distributed gaps would give 0.25 and 20%.
 
 Three consequences for any synthetic implementation:
 
-- **There is a floor.** On an idle page p10 equals p50 (16.6 vs 16.7). Across every load
-  condition, exactly **one gap in 1,789** fell below half a frame period: a 1.70ms interval
-  produced by a listener that ran 15.2ms late. A frame boundary falls inside it, so even
-  that case is two adjacent frames rather than two events in one.
+- **There is a floor.** On an idle page p10 equals p50 (16.6 vs 16.7). Across two runs
+  totalling **3,328 gaps** at every load condition, exactly one fell below half a frame
+  period: a 1.70ms interval produced by a listener that ran 15.2ms late. A frame boundary
+  falls inside it, so even that case is two adjacent frames rather than two events in one.
 - **Gaps longer than one frame happen (17.6%) and mostly are not dropped frames.**
   Displacement does not scale with the gap — three-frame gaps carry *half* the
   displacement of one-frame gaps (4.2px vs 8.1px) — because the gap comes from the
@@ -109,12 +109,14 @@ entirely.
 
 | main thread | gaps | one-frame adherence | all gaps | **sub-frame** | **long-then-short** | gap p50 |
 |---|---|---|---|---|---|---|
-| idle | 485 | 95.1% | 94.4% | **0.0%** | **0.0%** | 16.9ms |
+| idle | 485 | 95.1% | 94.4% | 0.0% | **0.0%** | 16.9ms |
 | blocked 30ms/100ms | 629 | 73.6% | 72.3% | **0.0%** | **0.0%** | 16.9ms |
 | blocked 70ms/100ms | 425 | **46.9%** | **30.8%** | **0.0%** | **0.0%** | 16.7ms |
 
 A hand on a heavily loaded page scores 30.8%, which is inside the range synthetic input
-produces. Adherence therefore separates cleanly only on an idle page.
+produces. Adherence therefore separates cleanly only on an idle page. (Figures are from one
+run; the floor and event-count results elsewhere pool two runs of the same protocol,
+3,328 gaps in total.)
 
 **What load actually does — it is not randomisation.** Under 70ms blocks the gaps stay
 tightly clustered; they simply cluster somewhere other than the frame grid:
@@ -135,8 +137,8 @@ is no longer running on.
 
 **Two properties survive it anyway, and they are the ones worth checking:**
 
-- **The floor holds.** One gap in 1,789 fell below half a frame period, at any load
-  level, and it was an adjacent-frame pair. A busy thread removes events and shifts the clock — it
+- **The floor holds.** One gap in 3,328 fell below half a frame period at any load level,
+  and it was an adjacent-frame pair. A busy thread removes events and shifts the clock — it
   cannot deliver two events in quick succession, because there is nothing to deliver until
   the device reports again.
 - **Compensating pairs stay at exactly zero.** A busy thread delays and merges. It never
@@ -602,7 +604,7 @@ time (§1.1), so an implementation has no excuse and no defence.
 | metric | real hardware | pass |
 |---|---|---|
 | **events in excess of frames** (any window of *n* events spanning fewer than *n−1* rAF ticks) | **0** in 1,792 events | **0** |
-| **gaps below half a frame period** | 1 in 1,789 (0.06%) | **≤ 2%** |
+| **gaps below half a frame period** | 1 in 3,328 (0.03%) | **≤ 2%** |
 | **long-gap-then-short-gap pairs** | **0.0%** | **≤ 1%** |
 | **modal gap** | one frame period, at every load level | within 5% of the frame period |
 | order inversions | 0 | 0 |
@@ -638,7 +640,7 @@ It is still the wrong threshold to test against, because a page cannot observe f
 the time its own listener ran. A gap is `N x frame interval` minus whatever listener delay
 was shed between the two events, so real gaps dip below one frame routinely under load (147
 of 728 at 30ms blocking, every one of them crossing exactly one frame boundary). Half a
-period is far enough below that: real input crossed it once in 1,789 gaps, machine input
+period is far enough below that: real input crossed it once in 3,328 gaps, machine input
 crosses it 23–32% of the time. Synthetic input
 breaks it routinely: 23–25% for one provider's built-in humanisation, and 3–32% run to run
 for client-side pacing over a network.
